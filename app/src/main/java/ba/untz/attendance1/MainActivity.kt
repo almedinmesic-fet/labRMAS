@@ -28,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -46,6 +47,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ba.untz.attendance1.ui.theme.Attendance1Theme
 import java.util.Locale
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -177,6 +179,30 @@ fun StatusPicker(
     }
 }
 
+
+@Composable
+fun LateMinutesSlider(
+    minutes: Int,
+    onMinutesChange: (Int) -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = if (enabled) "Late: $minutes min" else "Late: —",
+            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Slider(
+            value = minutes.toFloat(),
+            onValueChange = { onMinutesChange(it.roundToInt()) },
+            valueRange = 5f..60f,
+            steps = 10,
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
 @Composable
 fun Avatar(
     initials: String,
@@ -291,8 +317,6 @@ fun CheckInCard(
         }
     }
 }
-
-
 @Composable
 fun WindowControls(
     openWindow: Window?,
@@ -404,6 +428,36 @@ fun ProfessorScreen(modifier: Modifier = Modifier) {
 
 
 
+@Preview(name = "LateMinutesSlider - Enabled", showBackground = true)
+@Composable
+fun LateMinutesSliderEnabledPreview() {
+    Attendance1Theme {
+        Surface {
+            LateMinutesSlider(
+                minutes = 15,
+                onMinutesChange = {},
+                enabled = true,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+}
+
+@Preview(name = "LateMinutesSlider - Disabled", showBackground = true)
+@Composable
+fun LateMinutesSliderDisabledPreview() {
+    Attendance1Theme {
+        Surface {
+            LateMinutesSlider(
+                minutes = 15,
+                onMinutesChange = {},
+                enabled = false,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+}
+
 @Preview(name = "StatusPicker - Late", showBackground = true)
 @Composable
 fun StatusPickerPreview() {
@@ -431,23 +485,4 @@ fun SearchFieldPreview() {
         }
     }
 }
-
-@Preview(name = "LateOnlySwitch - On", showBackground = true)
-@Composable
-fun LateOnlySwitchOnPreview() {
-    Attendance1Theme {
-        Surface {
-            LateOnlySwitch(
-                onlyLate = true,
-                onOnlyLateChange = {},
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-        }
-    }
-}
-
-
-
-
-
 
