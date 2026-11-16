@@ -23,8 +23,11 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -34,6 +37,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -43,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ba.untz.attendance1.ui.theme.Attendance1Theme
@@ -70,6 +75,22 @@ enum class StatusKind(val label: String) {
     ABSENT("Absent")
 }
 
+fun StatusKind.toStatus(lateMinutes: Int): CheckInStatus {
+    return when (this) {
+        StatusKind.ON_TIME -> CheckInStatus.OnTime
+        StatusKind.LATE -> CheckInStatus.Late(lateMinutes)
+        StatusKind.ABSENT -> CheckInStatus.Absent
+    }
+}
+
+
+fun Window.startMinutes(): Int {
+    return when (this) {
+        Window.START -> 8 * 60        // 480 (08:00)
+        Window.MIDDLE -> 10 * 60      // 600 (10:00)
+        Window.END -> 11 * 60 + 30    // 690 (11:30)
+    }
+}
 
 fun CheckIn.timeText(): String {
     if (status is CheckInStatus.Absent) return "—"
@@ -204,6 +225,140 @@ fun LateMinutesSlider(
 }
 
 @Composable
+fun ManualCheckInForm(
+    window: Window,
+    existing: List<CheckIn>,
+    onSave: (CheckIn) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var index by rememberSaveable { mutableStateOf("") }
+    var name by rememberSaveable { mutableStateOf("") }
+    var statusKind by rememberSaveable { mutableStateOf(StatusKind.ON_TIME) }
+    var lateMinutes by rememberSaveable { mutableIntStateOf(5) }
+    var confirmed by rememberSaveable { mutableStateOf(false) }
+
+    val trimmedIndex = index.trim()
+    val trimmedName = name.trim()
+
+    val indexValid = Regex("IB\\d{3}").matches(trimmedIndex)
+    val indexError = trimmedIndex.isNotEmpty() && !indexValid
+
+    val nameValid = trimmedName.contains(" ")
+    val nameError = trimmedName.isNotEmpty() && !nameValid
+
+    val formValid = indexValid && nameValid && confirmed
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "Manual check-in · ${window.label}",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = index,
+            onValueChange = { index = it.uppercase() },
+            label = { Text("Index") },
+            placeholder = { Text("e.g. IB107") },
+            singleLine = true,
+            isError = indexError,
+            supportingText = if (indexError) {
+                { Text("Format: IB + 3 digits") }
+            } else null,
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Characters
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("First and last name") },
+            placeholder = { Text("e.g. Tarik Hodžić") },
+            singleLine = true,
+            isError = nameError,
+            supportingText = if (nameError) {
+                { Text("Enter first and last name") }
+            } else null,
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Words
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        StatusPicker(
+            selected = statusKind,
+            onSelect = { statusKind = it }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LateMinutesSlider(
+            minutes = lateMinutes,
+            onMinutesChange = { lateMinutes = it },
+            enabled = (statusKind == StatusKind.LATE)
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = confirmed,
+                    role = Role.Checkbox,
+                    onValueChange = { confirmed = it }
+                )
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = confirmed,
+                onCheckedChange = null
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = "Confirmed in person")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = {
+                val calculatedMinutes = when (statusKind) {
+                    StatusKind.ON_TIME -> window.startMinutes()
+                    StatusKind.LATE -> window.startMinutes() + lateMinutes
+                    StatusKind.ABSENT -> 0
+                }
+                val newCheckIn = CheckIn(
+                    student = Student(trimmedIndex, trimmedName),
+                    window = window,
+                    minutes = calculatedMinutes,
+                    status = statusKind.toStatus(lateMinutes)
+                )
+                onSave(newCheckIn)
+
+                
+                index = ""
+                name = ""
+                statusKind = StatusKind.ON_TIME
+                lateMinutes = 5
+                confirmed = false
+            },
+            enabled = formValid,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = "Add check-in")
+        }
+    }
+}
+
+@Composable
 fun Avatar(
     initials: String,
     modifier: Modifier = Modifier,
@@ -317,6 +472,8 @@ fun CheckInCard(
         }
     }
 }
+
+
 @Composable
 fun WindowControls(
     openWindow: Window?,
@@ -351,6 +508,8 @@ fun ProfessorScreen(modifier: Modifier = Modifier) {
     var checkIns by remember { mutableStateOf(sampleCheckIns) }
     var query by rememberSaveable { mutableStateOf("") }
     var onlyLate by rememberSaveable { mutableStateOf(false) }
+
+    
 
     Column(
         modifier = modifier
@@ -393,7 +552,6 @@ fun ProfessorScreen(modifier: Modifier = Modifier) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-
             val filteredCheckIns = activeCheckIns.filter { checkIn ->
                 val matchesQuery = checkIn.student.name.contains(query, ignoreCase = true)
                 val matchesLate = !onlyLate || checkIn.status is CheckInStatus.Late
@@ -416,6 +574,16 @@ fun ProfessorScreen(modifier: Modifier = Modifier) {
                     }
                 }
             }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+
+            ManualCheckInForm(
+                window = openWindow!!,
+                existing = checkIns,
+                onSave = { checkIns = checkIns + it },
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
         } else {
             Text(
                 text = "Open a window to see check-ins",
@@ -427,6 +595,21 @@ fun ProfessorScreen(modifier: Modifier = Modifier) {
 }
 
 
+
+@Preview(name = "ManualCheckInForm Preview", showBackground = true)
+@Composable
+fun ManualCheckInFormPreview() {
+    Attendance1Theme {
+        Surface {
+            ManualCheckInForm(
+                window = Window.MIDDLE,
+                existing = sampleCheckIns,
+                onSave = {},
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+}
 
 @Preview(name = "LateMinutesSlider - Enabled", showBackground = true)
 @Composable
