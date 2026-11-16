@@ -19,12 +19,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -56,6 +59,13 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+
+enum class StatusKind(val label: String) {
+    ON_TIME("On time"),
+    LATE("Late"),
+    ABSENT("Absent")
 }
 
 
@@ -133,6 +143,37 @@ fun LateOnlySwitch(
             checked = onlyLate,
             onCheckedChange = null
         )
+    }
+}
+
+
+@Composable
+fun StatusPicker(
+    selected: StatusKind,
+    onSelect: (StatusKind) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.selectableGroup()) {
+        StatusKind.entries.forEach { option ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectable(
+                        selected = (option == selected),
+                        onClick = { onSelect(option) },
+                        role = Role.RadioButton
+                    )
+                    .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = (option == selected),
+                    onClick = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = option.label)
+            }
+        }
     }
 }
 
@@ -363,6 +404,20 @@ fun ProfessorScreen(modifier: Modifier = Modifier) {
 
 
 
+@Preview(name = "StatusPicker - Late", showBackground = true)
+@Composable
+fun StatusPickerPreview() {
+    Attendance1Theme {
+        Surface {
+            StatusPicker(
+                selected = StatusKind.LATE,
+                onSelect = {},
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+}
+
 @Preview(name = "SearchField Preview", showBackground = true)
 @Composable
 fun SearchFieldPreview() {
@@ -391,61 +446,8 @@ fun LateOnlySwitchOnPreview() {
     }
 }
 
-@Preview(name = "LateOnlySwitch - Off", showBackground = true)
-@Composable
-fun LateOnlySwitchOffPreview() {
-    Attendance1Theme {
-        Surface {
-            LateOnlySwitch(
-                onlyLate = false,
-                onOnlyLateChange = {},
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-        }
-    }
-}
 
-@Preview(name = "Attendance Summary", showBackground = true)
-@Composable
-fun AttendanceSummaryPreview() {
-    AttendanceSummary(checkIns = sampleCheckIns)
-}
 
-@Preview(name = "Attendance Summary - Middle Window", showBackground = true)
-@Composable
-fun AttendanceSummaryMiddleWindowPreview() {
-    AttendanceSummary(checkIns = sampleCheckIns.filter { it.window == Window.MIDDLE })
-}
 
-@Preview(name = "Window Controls Middle", showBackground = true)
-@Composable
-fun WindowControlsPreview() {
-    WindowControls(
-        openWindow = Window.MIDDLE,
-        onOpen = {}
-    )
-}
 
-@Preview(name = "Light", showBackground = true, widthDp = 320)
-@Preview(name = "Dark", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true, widthDp = 320)
-@Composable
-fun CheckInRowPreview() {
-    Attendance1Theme {
-        Surface {
-            CheckInRow(checkIn = sampleCheckIns[1])
-        }
-    }
-}
 
-@Preview(name = "CheckInCard Preview", showBackground = true)
-@Composable
-fun CheckInCardPreview() {
-    Attendance1Theme {
-        Surface {
-            CheckInCard(
-                checkIn = sampleCheckIns[1],
-                allCheckIns = sampleCheckIns
-            )
-        }
-    }
-}
