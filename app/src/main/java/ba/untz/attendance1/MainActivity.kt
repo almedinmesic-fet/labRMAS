@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -85,6 +86,22 @@ fun AttendanceSummary(
     Text(
         text = "On time: $onTimeCount · Late: $lateCount · Absent: $absentCount",
         modifier = modifier
+    )
+}
+
+@Composable
+fun SearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        label = { Text("Search student") },
+        placeholder = { Text("e.g. Amir") },
+        singleLine = true,
+        modifier = modifier.fillMaxWidth()
     )
 }
 
@@ -236,6 +253,7 @@ fun WindowControls(
 fun ProfessorScreen(modifier: Modifier = Modifier) {
     var openWindow by rememberSaveable { mutableStateOf<Window?>(null) }
     var checkIns by remember { mutableStateOf(sampleCheckIns) }
+    var query by rememberSaveable { mutableStateOf("") }
 
     Column(
         modifier = modifier
@@ -262,12 +280,32 @@ fun ProfessorScreen(modifier: Modifier = Modifier) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Column {
-                activeCheckIns.forEach { checkIn ->
-                    CheckInCard(
-                        checkIn = checkIn,
-                        allCheckIns = checkIns
-                    )
+            SearchField(
+                query = query,
+                onQueryChange = { query = it },
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val filteredCheckIns = activeCheckIns.filter {
+                it.student.name.contains(query, ignoreCase = true)
+            }
+
+            if (filteredCheckIns.isEmpty()) {
+                Text(
+                    text = "No check-ins match the filter",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            } else {
+                Column {
+                    filteredCheckIns.forEach { checkIn ->
+                        CheckInCard(
+                            checkIn = checkIn,
+                            allCheckIns = checkIns
+                        )
+                    }
                 }
             }
         } else {
@@ -281,6 +319,20 @@ fun ProfessorScreen(modifier: Modifier = Modifier) {
 }
 
 
+
+@Preview(name = "SearchField Preview", showBackground = true)
+@Composable
+fun SearchFieldPreview() {
+    Attendance1Theme {
+        Surface {
+            SearchField(
+                query = "ami",
+                onQueryChange = {},
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+}
 
 @Preview(name = "Attendance Summary", showBackground = true)
 @Composable
