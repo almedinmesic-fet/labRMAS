@@ -19,12 +19,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ba.untz.attendance1.ui.theme.Attendance1Theme
@@ -103,6 +106,34 @@ fun SearchField(
         singleLine = true,
         modifier = modifier.fillMaxWidth()
     )
+}
+
+@Composable
+fun LateOnlySwitch(
+    onlyLate: Boolean,
+    onOnlyLateChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .toggleable(
+                value = onlyLate,
+                role = Role.Switch,
+                onValueChange = onOnlyLateChange
+            )
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Only late",
+            modifier = Modifier.weight(1f)
+        )
+        Switch(
+            checked = onlyLate,
+            onCheckedChange = null
+        )
+    }
 }
 
 @Composable
@@ -254,6 +285,7 @@ fun ProfessorScreen(modifier: Modifier = Modifier) {
     var openWindow by rememberSaveable { mutableStateOf<Window?>(null) }
     var checkIns by remember { mutableStateOf(sampleCheckIns) }
     var query by rememberSaveable { mutableStateOf("") }
+    var onlyLate by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -286,10 +318,21 @@ fun ProfessorScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
+            Spacer(modifier = Modifier.height(4.dp))
+
+            LateOnlySwitch(
+                onlyLate = onlyLate,
+                onOnlyLateChange = { onlyLate = it },
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+
             Spacer(modifier = Modifier.height(8.dp))
 
-            val filteredCheckIns = activeCheckIns.filter {
-                it.student.name.contains(query, ignoreCase = true)
+
+            val filteredCheckIns = activeCheckIns.filter { checkIn ->
+                val matchesQuery = checkIn.student.name.contains(query, ignoreCase = true)
+                val matchesLate = !onlyLate || checkIn.status is CheckInStatus.Late
+                matchesQuery && matchesLate
             }
 
             if (filteredCheckIns.isEmpty()) {
@@ -329,6 +372,34 @@ fun SearchFieldPreview() {
                 query = "ami",
                 onQueryChange = {},
                 modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+}
+
+@Preview(name = "LateOnlySwitch - On", showBackground = true)
+@Composable
+fun LateOnlySwitchOnPreview() {
+    Attendance1Theme {
+        Surface {
+            LateOnlySwitch(
+                onlyLate = true,
+                onOnlyLateChange = {},
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        }
+    }
+}
+
+@Preview(name = "LateOnlySwitch - Off", showBackground = true)
+@Composable
+fun LateOnlySwitchOffPreview() {
+    Attendance1Theme {
+        Surface {
+            LateOnlySwitch(
+                onlyLate = false,
+                onOnlyLateChange = {},
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
     }
